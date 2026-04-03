@@ -15,7 +15,6 @@ services:
     environment:
       APP_ENV: local
       APP_DEBUG: "true"
-      APP_KEY: base64:placeholder
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: 3306
