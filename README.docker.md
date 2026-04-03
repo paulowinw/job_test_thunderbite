@@ -85,6 +85,36 @@ Include volume removal if needed:
 docker compose down -v
 ```
 
+## Permissions (storage + bootstrap)
+
+In Docker with host bind mounts, Laravel needs writable directories for compiled files, logs, and cache. If not set, you’ll see errors like `tempnam(): file created in the system's temporary directory` or `There is no existing directory at "/var/www/html/storage/logs" and it could not be created: Permission denied`.
+
+From project root run (container):
+
+```bash
+docker compose exec app sh -c '
+  cd /var/www/html && \
+  mkdir -p storage/logs storage/framework/views storage/framework/cache bootstrap/cache && \
+  chown -R www-data:www-data storage bootstrap/cache && \
+  chmod -R 775 storage bootstrap/cache
+'
+```
+
+Then clear caches:
+
+```bash
+docker compose exec app sh -c '
+  cd /var/www/html && \
+  php artisan cache:clear && \
+  php artisan config:clear && \
+  php artisan route:clear && \
+  php artisan view:clear && \
+  php artisan config:cache
+'
+```
+
+If your platform has different runtime user (e.g. `www-data` vs `1000`), adjust the owner accordingly.
+
 ## Troubleshooting
 
 - If `vendor` is not available, run:
