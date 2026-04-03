@@ -28,27 +28,39 @@ return new class extends Migration
             ->whereNull('prize_id')
             ->first();
 
-        $lowPrize = Prize::query()
+        $lowPrizeQuery = Prize::query()
             ->where('campaign_id', $campaign->id)
             ->where('segment', 'low')
-            ->orderBy('id')
-            ->first();
+            ->orderBy('id');
 
-        if (! $game || ! $lowPrize) {
+        $lowPrizeOne = $lowPrizeQuery->first();
+        $lowPrizeTwo = $lowPrizeQuery->skip(1)->first();
+
+        if (! $game || ! $lowPrizeOne || ! $lowPrizeTwo) {
             return;
         }
 
-        foreach ([0, 1, 2] as $tileIndex) {
+        foreach ([0, 1] as $tileIndex) {
             GameRevealedTile::firstOrCreate(
                 [
                     'game_id' => $game->id,
                     'tile_index' => $tileIndex,
                 ],
                 [
-                    'prize_id' => $lowPrize->id,
+                    'prize_id' => $lowPrizeOne->id,
                 ]
             );
         }
+
+        GameRevealedTile::firstOrCreate(
+            [
+                'game_id' => $game->id,
+                'tile_index' => 2,
+            ],
+            [
+                'prize_id' => $lowPrizeTwo->id,
+            ]
+        );
     }
 
     public function down(): void
