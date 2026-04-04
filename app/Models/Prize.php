@@ -16,6 +16,7 @@ class Prize extends Model
         'weight',
         'daily_wins_limit',
         'daily_wins_count',
+        'daily_wins_count_date',
         'image',
         'starts_at',
         'ends_at',
@@ -26,6 +27,7 @@ class Prize extends Model
         return [
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
+            'daily_wins_count_date' => 'date',
         ];
     }
 

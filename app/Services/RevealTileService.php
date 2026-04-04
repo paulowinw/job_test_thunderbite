@@ -62,7 +62,13 @@ class RevealTileService
             if ($winningPrizeId !== null) {
                 $awarded = Prize::query()->whereKey($winningPrizeId)->lockForUpdate()->first();
                 if ($awarded !== null && $awarded->daily_wins_limit !== null) {
-                    $awarded->daily_wins_count = ($awarded->daily_wins_count ?? 0) + 1;
+                    $today = $this->todayStringForGame($game);
+                    if ($this->effectiveDailyWinsUsedToday($awarded, $today) === 0) {
+                        $awarded->daily_wins_count = 1;
+                        $awarded->daily_wins_count_date = $today;
+                    } else {
+                        $awarded->daily_wins_count = ($awarded->daily_wins_count ?? 0) + 1;
+                    }
                     $awarded->save();
                 }
 
@@ -84,6 +90,12 @@ class RevealTileService
 
         if ($game->finished_at !== null) {
             throw new GameValidationException('This game has already ended.');
+        }
+
+        $game->loadMissing('campaign');
+        $campaign = $game->campaign;
+        if ($campaign === null) {
+            throw new GameValidationException('Game must belong to a campaign.');
         }
 
         return $game;
@@ -115,10 +127,34 @@ class RevealTileService
             return;
         }
 
-        $used = $limited->daily_wins_count ?? 0;
+        $today = $this->todayStringForGame();
+        $used = $this->effectiveDailyWinsUsedToday($limited, $today);
         if ($used >= $limited->daily_wins_limit) {
             throw new GameValidationException('The daily limit for this prize was reached.');
         }
+    }
+
+    private function todayStringForGame(): string
+    {
+        return now()->timezone($campaign->timezone)->toDateString();
+    }
+
+    private function effectiveDailyWinsUsedToday(Prize $prize, string $today): int
+    {
+        $storedDate = $prize->daily_wins_count_date;
+        if ($storedDate === null) {
+            return 0;
+        }
+
+        $dateString = $storedDate instanceof \DateTimeInterface
+            ? $storedDate->format('Y-m-d')
+            : (string) $storedDate;
+
+        if ($dateString !== $today) {
+            return 0;
+        }
+
+        return (int) ($prize->daily_wins_count ?? 0);
     }
 
     private function findWinningPrizeId(int $gameId): ?int
