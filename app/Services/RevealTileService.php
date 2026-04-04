@@ -62,7 +62,7 @@ class RevealTileService
             if ($winningPrizeId !== null) {
                 $awarded = Prize::query()->whereKey($winningPrizeId)->lockForUpdate()->first();
                 if ($awarded !== null && $awarded->daily_wins_limit !== null) {
-                    $today = $this->todayStringForGame($game);
+                    $today = now()->toDateString();
                     if ($this->effectiveDailyWinsUsedToday($awarded, $today) === 0) {
                         $awarded->daily_wins_count = 1;
                         $awarded->daily_wins_count_date = $today;
