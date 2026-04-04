@@ -9,7 +9,7 @@ use App\Models\Prize;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class LoadCampaignRevealedTilesTest extends TestCase
+class GameRevealedTilesTest extends TestCase
 {
     use RefreshDatabase;
 

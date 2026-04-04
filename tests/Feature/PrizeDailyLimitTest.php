@@ -10,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
-class PrizeDailyVolumeLimitTest extends TestCase
+class PrizeDailyLimitTest extends TestCase
 {
     use RefreshDatabase;
 
