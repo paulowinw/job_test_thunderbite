@@ -36,7 +36,7 @@ return new class extends Migration
         $lowPrizeOne = $lowPrizeQuery->first();
         $lowPrizeTwo = $lowPrizeQuery->skip(1)->first();
 
-        if (! $game || ! $lowPrizeOne || ! $lowPrizeTwo) {
+        if (! $game || ! $lowPrizeOne) {
             return;
         }
 
@@ -52,15 +52,17 @@ return new class extends Migration
             );
         }
 
-        GameRevealedTile::firstOrCreate(
-            [
-                'game_id' => $game->id,
-                'tile_index' => 2,
-            ],
-            [
-                'prize_id' => $lowPrizeTwo->id,
-            ]
-        );
+        if ($lowPrizeTwo) {
+            GameRevealedTile::firstOrCreate(
+                [
+                    'game_id' => $game->id,
+                    'tile_index' => 2,
+                ],
+                [
+                    'prize_id' => $lowPrizeTwo->id,
+                ]
+            );
+        }
     }
 
     public function down(): void
