@@ -1,14 +1,15 @@
 <?php
 
+namespace Database\Seeders;
+
 use App\Models\Campaign;
 use App\Models\Game;
-use App\Models\GameRevealedTile;
 use App\Models\Prize;
 use App\Models\User;
-use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
-return new class extends Migration
+class PauloUserAndGameSeeder extends Seeder
 {
     private const CAMPAIGN_SLUG = 'test-campaign-1';
 
@@ -16,7 +17,7 @@ return new class extends Migration
 
     private const PAULO_ACCOUNT = 'paulo';
 
-    public function up(): void
+    public function run(): void
     {
         $campaign = Campaign::firstOrCreate(
             ['slug' => self::CAMPAIGN_SLUG],
@@ -69,26 +70,4 @@ return new class extends Migration
             ]);
         }
     }
-
-    public function down(): void
-    {
-        $campaign = Campaign::where('slug', self::CAMPAIGN_SLUG)->first();
-
-        if ($campaign) {
-            $games = Game::query()
-                ->where('campaign_id', $campaign->id)
-                ->where('account', self::PAULO_ACCOUNT)
-                ->where('segment', 'low')
-                ->whereNull('finished_at')
-                ->whereNull('prize_id')
-                ->get();
-
-            foreach ($games as $game) {
-                GameRevealedTile::where('game_id', $game->id)->delete();
-                $game->delete();
-            }
-        }
-
-        User::where('email', self::PAULO_EMAIL)->delete();
-    }
-};
+}

@@ -13,6 +13,9 @@ class DatabaseSeeder extends Seeder
             CampaignSeeder::class,
             PrizeSeeder::class,
             GameSeeder::class,
+            PauloUserAndGameSeeder::class,
+            GameRevealedTileSeeder::class,
+            PauloRevealedTilesSeeder::class,
         ]);
     }
 }
