@@ -13,6 +13,6 @@ class GameSeeder extends Seeder
         Schema::disableForeignKeyConstraints();
         Game::truncate();
         Schema::enableForeignKeyConstraints();
-        Game::factory()->count(10000)->create();
+        Game::factory()->count(100)->create();
     }
 }
