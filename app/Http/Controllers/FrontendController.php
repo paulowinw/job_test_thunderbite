@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\GameFrontendConfigResource;
 use App\Models\Campaign;
-use App\Models\Game;
+use App\Services\CampaignGameLoader;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class FrontendController extends Controller
 {
+    public function __construct(
+        private readonly CampaignGameLoader $campaignGameLoader,
+    ) {}
+
     public function loadCampaign(Request $request, Campaign $campaign): View
     {
         $validated = $request->validate([
@@ -16,40 +21,20 @@ class FrontendController extends Controller
             'segment' => ['required', 'in:low,med,high'],
         ]);
 
-        $game = Game::query()
-            ->where('campaign_id', $campaign->id)
-            ->where('account', $validated['a'])
-            ->where('segment', $validated['segment'])
-            ->whereNull('finished_at')
-            ->latest('id')
-            ->first();
+        /** I'm using a service to load the game and revealed tiles, I could use Eloquent query builder instead,
+         * but I think it's better to use a services because the project doesn't have Eloquent.
+        */
+        $game = $this->campaignGameLoader->findOrCreateGame(
+            $campaign,
+            $validated['a'],
+            $validated['segment'],
+        );
 
-        if (! $game) {
-            $game = Game::create([
-                'campaign_id' => $campaign->id,
-                'account' => $validated['a'],
-                'segment' => $validated['segment'],
-            ]);
-        }
+        $revealedTiles = $this->campaignGameLoader->revealedTiles($game);
 
-        $revealedTiles = $game->revealedTiles()
-            ->with(['prize:id,image'])
-            ->orderBy('tile_index')
-            ->get()
-            ->map(fn ($tile) => [
-                'index' => (int) $tile->tile_index,
-                'image' => $tile->prize?->image,
-            ])
-            ->values()
-            ->all();
+        $config = (new GameFrontendConfigResource($game, $revealedTiles))->toJsonString($request);
 
-        $jsonConfig = json_encode([
-            'apiPath' => '/api/flip',
-            'gameId' => (string) $game->id,
-            'revealedTiles' => $revealedTiles,
-        ], JSON_THROW_ON_ERROR);
-
-        return view('frontend.index', ['config' => $jsonConfig]);
+        return view('frontend.index', ['config' => $config]);
     }
 
     public function placeholder(): View
