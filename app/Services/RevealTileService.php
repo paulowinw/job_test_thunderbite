@@ -127,16 +127,11 @@ class RevealTileService
             return;
         }
 
-        $today = $this->todayStringForGame();
+        $today = now()->toDateString();
         $used = $this->effectiveDailyWinsUsedToday($limited, $today);
         if ($used >= $limited->daily_wins_limit) {
             throw new GameValidationException('The daily limit for this prize was reached.');
         }
-    }
-
-    private function todayStringForGame(): string
-    {
-        return now()->timezone($campaign->timezone)->toDateString();
     }
 
     private function effectiveDailyWinsUsedToday(Prize $prize, string $today): int
