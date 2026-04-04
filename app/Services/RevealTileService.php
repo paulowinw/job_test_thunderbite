@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\GameValidationException;
 use App\Models\Game;
 use App\Models\GameRevealedTile;
 use App\Models\Prize;
@@ -28,47 +29,23 @@ class RevealTileService
                 ->with('campaign')
                 ->first();
 
-            if ($game === null) {
-                return $this->fallbackResponse('Game not found.');
-            }
+            $game = $this->validateGameCanProceed($game);
 
-            $existing = GameRevealedTile::query()
-                ->where('game_id', $game->id)
+            $existingTile = GameRevealedTile::query()
+                ->where('game_id', $gameId)
                 ->where('tile_index', $tileIndex)
                 ->with('prize:id,image')
                 ->first();
 
-            if ($existing !== null) {
+            if ($existingTile !== null) {
                 return [
-                    'tileImage' => $this->tileImageFromPrize($existing->prize?->image),
+                    'tileImage' => $this->tileImageFromPrize($existingTile->prize?->image),
                 ];
             }
 
-            if ($game->finished_at !== null) {
-                return $this->fallbackResponse('This game has already ended.');
-            }
+            $prize = $this->validatePrizeAvailableForDraw($this->picker->pick($game));
 
-            $prize = $this->picker->pick($game);
-
-            if ($prize === null) {
-                return $this->fallbackResponse('No prize is available for this draw.');
-            }
-
-            $samePrizeReveals = GameRevealedTile::query()
-                ->where('game_id', $game->id)
-                ->where('prize_id', $prize->id)
-                ->count();
-            $wouldCompleteWin = ($samePrizeReveals + 1) >= 3;
-
-            if ($wouldCompleteWin && $prize->daily_wins_limit !== null) {
-                $limited = Prize::query()->whereKey($prize->id)->lockForUpdate()->first();
-                if ($limited !== null) {
-                    $used = $limited->daily_wins_count ?? 0;
-                    if ($used >= $limited->daily_wins_limit) {
-                        return $this->fallbackResponse('The daily limit for this prize was reached.');
-                    }
-                }
-            }
+            $this->validateDailyWinLimitAllowsCompletion($game, $prize);
 
             GameRevealedTile::query()->create([
                 'game_id' => $game->id,
@@ -99,6 +76,51 @@ class RevealTileService
         });
     }
 
+    private function validateGameCanProceed(?Game $game): Game
+    {
+        if ($game === null) {
+            throw new GameValidationException('Game not found.');
+        }
+
+        if ($game->finished_at !== null) {
+            throw new GameValidationException('This game has already ended.');
+        }
+
+        return $game;
+    }
+
+    private function validatePrizeAvailableForDraw(?Prize $prize): Prize
+    {
+        if ($prize === null) {
+            throw new GameValidationException('No prize is available for this draw.');
+        }
+
+        return $prize;
+    }
+
+    private function validateDailyWinLimitAllowsCompletion(Game $game, Prize $prize): void
+    {
+        $samePrizeReveals = GameRevealedTile::query()
+            ->where('game_id', $game->id)
+            ->where('prize_id', $prize->id)
+            ->count();
+        $wouldCompleteWin = ($samePrizeReveals + 1) >= 3;
+
+        if (! $wouldCompleteWin || $prize->daily_wins_limit === null) {
+            return;
+        }
+
+        $limited = Prize::query()->whereKey($prize->id)->lockForUpdate()->first();
+        if ($limited === null) {
+            return;
+        }
+
+        $used = $limited->daily_wins_count ?? 0;
+        if ($used >= $limited->daily_wins_limit) {
+            throw new GameValidationException('The daily limit for this prize was reached.');
+        }
+    }
+
     private function findWinningPrizeId(int $gameId): ?int
     {
         $row = GameRevealedTile::query()
@@ -109,17 +131,6 @@ class RevealTileService
             ->first();
 
         return $row !== null ? (int) $row->prize_id : null;
-    }
-
-    /**
-     * @return array{tileImage: string, message: string}
-     */
-    private function fallbackResponse(string $message): array
-    {
-        return [
-            'tileImage' => self::FALLBACK_TILE_IMAGE,
-            'message' => $message,
-        ];
     }
 
     private function tileImageFromPrize(?string $image): string
