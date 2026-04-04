@@ -14,7 +14,8 @@ class Prize extends Model
         'description',
         'segment',
         'weight',
-        'daily_volume_limit',
+        'daily_wins_limit',
+        'daily_wins_count',
         'image',
         'starts_at',
         'ends_at',
@@ -42,7 +43,7 @@ class Prize extends Model
     /**
      * Prizes eligible for a weighted draw: same campaign and segment, positive weight,
      * and within starts_at / ends_at evaluated in the campaign timezone.
-     * Daily volume limits are applied by narrowing the query elsewhere when implemented.
+     * Daily win limits are enforced in {@see \App\Services\RevealTileService::reveal()}.
      */
     public function scopeForWeightedPick(Builder $query, Game $game): void
     {

@@ -11,10 +11,18 @@ class WeightedPrizePicker
 {
     /**
      * Eligible prizes for a weighted draw for this game.
-     * Narrow this query further (e.g. daily volume cap) before calling {@see pickFromQuery()}.
+     * {@see Prize::$daily_wins_limit} is enforced when a game is completed in
+     * {@see \App\Services\RevealTileService::reveal()}.
      */
     public function eligibleQuery(Game $game): Builder
     {
+        $game->loadMissing('campaign');
+        $campaign = $game->campaign;
+
+        if ($campaign === null) {
+            throw new \InvalidArgumentException('Game must belong to a campaign.');
+        }
+
         return Prize::query()->forWeightedPick($game);
     }
 

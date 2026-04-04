@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Game;
 use App\Models\GameRevealedTile;
+use App\Models\Prize;
 use Illuminate\Support\Facades\DB;
 
 class RevealTileService
@@ -53,6 +54,22 @@ class RevealTileService
                 return $this->fallbackResponse('No prize is available for this draw.');
             }
 
+            $samePrizeReveals = GameRevealedTile::query()
+                ->where('game_id', $game->id)
+                ->where('prize_id', $prize->id)
+                ->count();
+            $wouldCompleteWin = ($samePrizeReveals + 1) >= 3;
+
+            if ($wouldCompleteWin && $prize->daily_wins_limit !== null) {
+                $limited = Prize::query()->whereKey($prize->id)->lockForUpdate()->first();
+                if ($limited !== null) {
+                    $used = $limited->daily_wins_count ?? 0;
+                    if ($used >= $limited->daily_wins_limit) {
+                        return $this->fallbackResponse('The daily limit for this prize was reached.');
+                    }
+                }
+            }
+
             GameRevealedTile::query()->create([
                 'game_id' => $game->id,
                 'tile_index' => $tileIndex,
@@ -66,6 +83,12 @@ class RevealTileService
             ];
 
             if ($winningPrizeId !== null) {
+                $awarded = Prize::query()->whereKey($winningPrizeId)->lockForUpdate()->first();
+                if ($awarded !== null && $awarded->daily_wins_limit !== null) {
+                    $awarded->daily_wins_count = ($awarded->daily_wins_count ?? 0) + 1;
+                    $awarded->save();
+                }
+
                 $game->prize_id = $winningPrizeId;
                 $game->finished_at = now();
                 $game->save();
