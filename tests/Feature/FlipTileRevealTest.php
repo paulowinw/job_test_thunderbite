@@ -8,6 +8,7 @@ use App\Models\GameRevealedTile;
 use App\Models\Prize;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class FlipTileRevealTest extends TestCase
@@ -47,6 +48,133 @@ class FlipTileRevealTest extends TestCase
         ]);
 
         return ['campaign' => $campaign, 'game' => $game, 'prize' => $prize];
+    }
+
+    /**
+     * Segment filtering: players choose `segment` (`low`, `med`, `high`) when opening the campaign;
+     * that value is stored on the game and restricts weighted picks to prizes in the same segment.
+     *
+     * @return array{campaign: Campaign, game: Game, prizes: array<string, Prize>}
+     */
+    private function makeCampaignWithLowMedHighPrizesAndGame(string $gameSegment): array
+    {
+        $campaign = Campaign::query()->create([
+            'timezone' => 'UTC',
+            'name' => 'Segment Pool Campaign',
+            'slug' => 'segment-pool-campaign-'.$gameSegment,
+            'starts_at' => null,
+            'ends_at' => null,
+        ]);
+
+        $prizes = [];
+        foreach (['low', 'med', 'high'] as $segment) {
+            $prizes[$segment] = Prize::query()->create([
+                'campaign_id' => $campaign->id,
+                'name' => 'Prize '.$segment,
+                'description' => null,
+                'segment' => $segment,
+                'weight' => $segment === $gameSegment ? 1 : 999,
+                'image' => 'assets/flip-seg-'.$segment.'.png',
+                'starts_at' => null,
+                'ends_at' => null,
+            ]);
+        }
+
+        $game = Game::query()->create([
+            'campaign_id' => $campaign->id,
+            'prize_id' => null,
+            'account' => 'segment-pool-'.$gameSegment,
+            'segment' => $gameSegment,
+            'finished_at' => null,
+        ]);
+
+        return ['campaign' => $campaign, 'game' => $game, 'prizes' => $prizes];
+    }
+
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function playerSegmentProvider(): array
+    {
+        return [
+            'low' => ['low'],
+            'med' => ['med'],
+            'high' => ['high'],
+        ];
+    }
+
+    #[DataProvider('playerSegmentProvider')]
+    public function test_flip_only_draws_prizes_matching_game_segment(string $segment): void
+    {
+        ['game' => $game, 'prizes' => $prizes] = $this->makeCampaignWithLowMedHighPrizesAndGame($segment);
+
+        $response = $this->postJson(route('api.flip'), [
+            'gameId' => $game->id,
+            'tileIndex' => 3,
+        ]);
+
+        $response->assertOk();
+        $this->assertSame($prizes[$segment]->image, $response->json('tileImage'));
+
+        $this->assertDatabaseHas('game_revealed_tiles', [
+            'game_id' => $game->id,
+            'tile_index' => 3,
+            'prize_id' => $prizes[$segment]->id,
+        ]);
+    }
+
+    public function test_segment_query_parameter_on_campaign_load_sets_game_segment_for_flip_pool(): void
+    {
+        $campaign = Campaign::query()->create([
+            'timezone' => 'UTC',
+            'name' => 'Query Seg Campaign',
+            'slug' => 'query-seg-campaign',
+            'starts_at' => null,
+            'ends_at' => null,
+        ]);
+
+        foreach (['low', 'med', 'high'] as $seg) {
+            Prize::query()->create([
+                'campaign_id' => $campaign->id,
+                'name' => 'Prize '.$seg,
+                'description' => null,
+                'segment' => $seg,
+                'weight' => 1,
+                'image' => 'assets/query-seg-'.$seg.'.png',
+                'starts_at' => null,
+                'ends_at' => null,
+            ]);
+        }
+
+        $this->get(route('campaign.show', [
+            'campaign' => $campaign->slug,
+            'a' => 'query-seg-account',
+            'segment' => 'med',
+        ]))->assertOk();
+
+        $game = Game::query()
+            ->where('account', 'query-seg-account')
+            ->where('segment', 'med')
+            ->first();
+
+        $this->assertNotNull($game);
+
+        $medPrize = Prize::query()
+            ->where('campaign_id', $campaign->id)
+            ->where('segment', 'med')
+            ->first();
+
+        $response = $this->postJson(route('api.flip'), [
+            'gameId' => $game->id,
+            'tileIndex' => 8,
+        ]);
+
+        $response->assertOk();
+        $this->assertSame($medPrize->image, $response->json('tileImage'));
+        $this->assertDatabaseHas('game_revealed_tiles', [
+            'game_id' => $game->id,
+            'prize_id' => $medPrize->id,
+        ]);
     }
 
     public function test_reveal_new_tile_persists_row_and_returns_prize_image(): void
@@ -120,60 +248,6 @@ class FlipTileRevealTest extends TestCase
         $game->refresh();
         $this->assertNotNull($game->finished_at);
         $this->assertSame($prize->id, $game->prize_id);
-    }
-
-    public function test_only_prizes_matching_game_segment_are_eligible(): void
-    {
-        $campaign = Campaign::query()->create([
-            'timezone' => 'UTC',
-            'name' => 'Segment Campaign',
-            'slug' => 'segment-campaign',
-            'starts_at' => null,
-            'ends_at' => null,
-        ]);
-
-        $prizeLow = Prize::query()->create([
-            'campaign_id' => $campaign->id,
-            'name' => 'Low seg',
-            'description' => null,
-            'segment' => 'low',
-            'weight' => 1,
-            'image' => 'assets/only-low.png',
-            'starts_at' => null,
-            'ends_at' => null,
-        ]);
-
-        Prize::query()->create([
-            'campaign_id' => $campaign->id,
-            'name' => 'High seg',
-            'description' => null,
-            'segment' => 'high',
-            'weight' => 999,
-            'image' => 'assets/only-high.png',
-            'starts_at' => null,
-            'ends_at' => null,
-        ]);
-
-        $game = Game::query()->create([
-            'campaign_id' => $campaign->id,
-            'prize_id' => null,
-            'account' => 'seg-player',
-            'segment' => 'low',
-            'finished_at' => null,
-        ]);
-
-        $response = $this->postJson(route('api.flip'), [
-            'gameId' => $game->id,
-            'tileIndex' => 10,
-        ]);
-
-        $response->assertOk();
-        $this->assertSame($prizeLow->image, $response->json('tileImage'));
-
-        $this->assertDatabaseHas('game_revealed_tiles', [
-            'game_id' => $game->id,
-            'prize_id' => $prizeLow->id,
-        ]);
     }
 
     public function test_sqlite_weighted_pick_does_not_use_rand_in_sql(): void
