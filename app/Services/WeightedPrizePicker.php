@@ -12,7 +12,7 @@ class WeightedPrizePicker
     /**
      * Eligible prizes for a weighted draw for this game.
      * {@see Prize::$daily_wins_limit} is enforced when a game is completed in
-     * {@see \App\Services\RevealTileService::reveal()}.
+     * {@see \App\Services\RevealTile::reveal()}.
      */
     public function eligibleQuery(Game $game): Builder
     {
