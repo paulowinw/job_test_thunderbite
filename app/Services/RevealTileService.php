@@ -22,20 +22,9 @@ class RevealTileService
     public function reveal(int $gameId, int $tileIndex): array
     {
         return DB::transaction(function () use ($gameId, $tileIndex) {
-            /** @var Game|null $game */
-            $game = Game::query()
-                ->whereKey($gameId)
-                ->lockForUpdate()
-                ->with('campaign')
-                ->first();
+            $game = $this->validateGameCanProceed(Game::findForRevealWithLock($gameId));
 
-            $game = $this->validateGameCanProceed($game);
-
-            $existingTile = GameRevealedTile::query()
-                ->where('game_id', $gameId)
-                ->where('tile_index', $tileIndex)
-                ->with('prize:id,image')
-                ->first();
+            $existingTile = GameRevealedTile::findByGameAndTileIndexWithPrize($gameId, $tileIndex);
 
             if ($existingTile !== null) {
                 return [
@@ -47,20 +36,16 @@ class RevealTileService
 
             $this->validateDailyWinLimitAllowsCompletion($game, $prize);
 
-            GameRevealedTile::query()->create([
-                'game_id' => $game->id,
-                'tile_index' => $tileIndex,
-                'prize_id' => $prize->id,
-            ]);
+            GameRevealedTile::createForGameTile($game->id, $tileIndex, $prize->id);
 
-            $winningPrizeId = $this->findWinningPrizeId($game->id);
+            $winningPrizeId = GameRevealedTile::findPrizeIdWithThreeOrMoreReveals($game->id);
 
             $payload = [
                 'tileImage' => $this->tileImageFromPrize($prize->image),
             ];
 
             if ($winningPrizeId !== null) {
-                $awarded = Prize::query()->whereKey($winningPrizeId)->lockForUpdate()->first();
+                $awarded = Prize::findWithLockForUpdate($winningPrizeId);
                 if ($awarded !== null && $awarded->daily_wins_limit !== null) {
                     $today = now()->toDateString();
                     if ($this->effectiveDailyWinsUsedToday($awarded, $today) === 0) {
@@ -112,17 +97,14 @@ class RevealTileService
 
     private function validateDailyWinLimitAllowsCompletion(Game $game, Prize $prize): void
     {
-        $samePrizeReveals = GameRevealedTile::query()
-            ->where('game_id', $game->id)
-            ->where('prize_id', $prize->id)
-            ->count();
+        $samePrizeReveals = GameRevealedTile::countRevealsForGameAndPrize($game->id, $prize->id);
         $wouldCompleteWin = ($samePrizeReveals + 1) >= 3;
 
         if (! $wouldCompleteWin || $prize->daily_wins_limit === null) {
             return;
         }
 
-        $limited = Prize::query()->whereKey($prize->id)->lockForUpdate()->first();
+        $limited = Prize::findWithLockForUpdate($prize->id);
         if ($limited === null) {
             return;
         }
@@ -150,18 +132,6 @@ class RevealTileService
         }
 
         return (int) ($prize->daily_wins_count ?? 0);
-    }
-
-    private function findWinningPrizeId(int $gameId): ?int
-    {
-        $row = GameRevealedTile::query()
-            ->where('game_id', $gameId)
-            ->selectRaw('prize_id')
-            ->groupBy('prize_id')
-            ->havingRaw('COUNT(*) >= ?', [3])
-            ->first();
-
-        return $row !== null ? (int) $row->prize_id : null;
     }
 
     private function tileImageFromPrize(?string $image): string

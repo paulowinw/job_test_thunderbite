@@ -71,4 +71,9 @@ class Prize extends Model
                     ->orWhere('ends_at', '>=', $now);
             });
     }
+
+    public static function findWithLockForUpdate(int $id): ?self
+    {
+        return static::query()->whereKey($id)->lockForUpdate()->first();
+    }
 }

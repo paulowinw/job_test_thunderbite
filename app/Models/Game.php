@@ -44,4 +44,34 @@ class Game extends Model
     {
         return $this->hasMany(GameRevealedTile::class);
     }
+
+    public static function findForRevealWithLock(int $gameId): ?self
+    {
+        return static::query()
+            ->whereKey($gameId)
+            ->lockForUpdate()
+            ->with('campaign')
+            ->first();
+    }
+
+    public static function findOrCreateActiveForAccountAndSegment(Campaign $campaign, string $account, string $segment): self
+    {
+        $game = static::query()
+            ->where('campaign_id', $campaign->id)
+            ->where('account', $account)
+            ->where('segment', $segment)
+            ->whereNull('finished_at')
+            ->latest('id')
+            ->first();
+
+        if ($game !== null) {
+            return $game;
+        }
+
+        return static::create([
+            'campaign_id' => $campaign->id,
+            'account' => $account,
+            'segment' => $segment,
+        ]);
+    }
 }
