@@ -101,7 +101,7 @@ class PrizeDailyLimitTest extends TestCase
             'tileIndex' => 2,
         ]);
 
-        $blocked->assertOk();
+        $blocked->assertUnprocessable();
         $blocked->assertJson([
             'message' => 'The daily limit for this prize was reached.',
         ]);

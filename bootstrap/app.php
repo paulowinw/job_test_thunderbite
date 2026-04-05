@@ -31,7 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'tileImage' => $e->tileImage,
                     'message' => $e->getMessage(),
-                ], 200);
+                ], 422);
             }
         });
 
@@ -39,11 +39,11 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->expectsJson()) {
                 return response()->json([
                     'message' => $e->getMessage(),
-                ], 200);
+                ], 422);
             }
 
             return response()->view('frontend.campaign-unavailable', [
                 'message' => $e->getMessage(),
-            ], 200);
+            ], 422);
         });
     })->create();

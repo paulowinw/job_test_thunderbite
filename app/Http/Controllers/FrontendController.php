@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Frontend\LoadCampaignRequest;
 use App\Http\Resources\GameFrontendConfigResource;
 use App\Models\Campaign;
 use App\Services\GameLoader;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class FrontendController extends Controller
@@ -14,12 +14,9 @@ class FrontendController extends Controller
         private readonly GameLoader $gameLoader,
     ) {}
 
-    public function loadCampaign(Request $request, Campaign $campaign): View
+    public function loadCampaign(LoadCampaignRequest $request, Campaign $campaign): View
     {
-        $validated = $request->validate([
-            'a' => ['required', 'string', 'max:255'],
-            'segment' => ['required', 'in:low,med,high'],
-        ]);
+        $validated = $request->validated();
 
         $this->gameLoader->validateCampaignPublicPlay($campaign);
 

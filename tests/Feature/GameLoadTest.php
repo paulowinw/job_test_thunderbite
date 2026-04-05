@@ -68,7 +68,7 @@ class GameLoadTest extends TestCase
                 'segment' => 'low',
             ]));
 
-            $response->assertOk();
+            $response->assertStatus(422);
             $response->assertViewIs('frontend.campaign-unavailable');
             $response->assertViewHas('message', __('The campaign has not started yet.'));
             $response->assertSee(__('The campaign has not started yet.'), false);
@@ -109,7 +109,7 @@ class GameLoadTest extends TestCase
                 'segment' => 'low',
             ]));
 
-            $response->assertOk();
+            $response->assertStatus(422);
             $response->assertViewIs('frontend.campaign-unavailable');
             $response->assertViewHas('message', __('This campaign has ended.'));
             $response->assertSee(__('This campaign has ended.'), false);

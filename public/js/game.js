@@ -502,7 +502,18 @@ function request(method, url, data) {
     return new Promise((resolve, reject) => {
         const request = new XMLHttpRequest();
         request.responseType = "json";
-        request.onload = _ => (request.status >= 200 && request.status < 300) ? resolve(request.response) : reject(new Error(request.statusText));
+        request.onload = _ => {
+            const body = request.response;
+            if (request.status >= 200 && request.status < 300) {
+                resolve(body);
+            }
+            else if (request.status === 422 && body && typeof body === "object" && "tileImage" in body) {
+                resolve(body);
+            }
+            else {
+                reject(new Error(request.statusText));
+            }
+        };
         request.onerror = _ => reject(new Error(request.statusText));
         request.open(method, url);
         request.setRequestHeader("Content-Type", "application/json");
