@@ -199,6 +199,47 @@ class FlipTileRevealTest extends TestCase
         ]);
     }
 
+    /** 
+     * Test that revealed tiles are persisted and embedded in the frontend after a campaign reload.
+     * 
+     * Test satisfies:
+     * 6. **Game Persistence**: The game state must survive page refreshes.
+     *  When a player returns, they should see their previously revealed tiles.
+     * 
+     * @return void
+     * 
+    */
+    public function test_revealed_tile_stays_in_database_and_is_embedded_after_campaign_reload(): void
+    {
+        ['campaign' => $campaign, 'game' => $game, 'prize' => $prize] = $this->makeCampaignGameAndPrize();
+        $tileIndex = 9;
+
+        $this->postJson(route('api.flip'), [
+            'gameId' => $game->id,
+            'tileIndex' => $tileIndex,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('game_revealed_tiles', [
+            'game_id' => $game->id,
+            'tile_index' => $tileIndex,
+            'prize_id' => $prize->id,
+        ]);
+
+        $reload = $this->get(route('campaign.show', [
+            'campaign' => $campaign->slug,
+            'a' => 'flip-tester',
+            'segment' => 'low',
+        ]));
+
+        $reload->assertOk();
+        $config = json_decode($reload->viewData('config'), true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame((string) $game->id, $config['gameId']);
+        $this->assertSame([
+            ['index' => $tileIndex, 'image' => $prize->image],
+        ], $config['revealedTiles']);
+    }
+
     public function test_same_tile_index_is_idempotent_and_does_not_insert_second_row(): void
     {
         ['game' => $game, 'prize' => $prize] = $this->makeCampaignGameAndPrize();
