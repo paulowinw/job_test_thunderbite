@@ -4,19 +4,19 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\FlipTileRequest;
-use App\Services\RevealTile;
+use App\Services\RevealTileHandler;
 
 class ApiController extends Controller
 {
     public function __construct(
-        private readonly RevealTile $revealTile,
+        private readonly RevealTileHandler $revealTileHandler,
     ) {}
 
     public function flip(FlipTileRequest $request)
     {
         $validated = $request->validated();
 
-        return response()->json($this->revealTile->reveal(
+        return response()->json($this->revealTileHandler->reveal(
             (int) $validated['gameId'],
             (int) $validated['tileIndex'],
         ));

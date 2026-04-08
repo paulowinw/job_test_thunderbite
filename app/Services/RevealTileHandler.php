@@ -8,7 +8,7 @@ use App\Models\GameRevealedTile;
 use App\Models\Prize;
 use Illuminate\Support\Facades\DB;
 
-class RevealTile
+class RevealTileHandler
 {
     private const FALLBACK_TILE_IMAGE = '/assets/1.png';
 
