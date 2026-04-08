@@ -48,7 +48,7 @@ class RevealTileHandler
             if ($winningPrizeId !== null) {
                 $awarded = Prize::findWithLockForUpdate($winningPrizeId);
                 if ($awarded !== null && $awarded->daily_wins_limit !== null) {
-                    $today = now()->toDateString();
+                    $today = $this->todayForGame($game);
                     if ($this->effectiveDailyWinsUsedToday($awarded, $today) === 0) {
                         $awarded->daily_wins_count = 1;
                         $awarded->daily_wins_count_date = $today;
@@ -110,11 +110,19 @@ class RevealTileHandler
             return;
         }
 
-        $today = now()->toDateString();
+        $today = $this->todayForGame($game);
         $used = $this->effectiveDailyWinsUsedToday($limited, $today);
         if ($used >= $limited->daily_wins_limit) {
             throw new GameValidationException('The daily limit for this prize was reached.');
         }
+    }
+
+    private function todayForGame(Game $game): string
+    {
+        $game->loadMissing('campaign');
+        $tz = $game->campaign?->timezone ?? config('app.timezone');
+
+        return now()->timezone($tz)->toDateString();
     }
 
     private function effectiveDailyWinsUsedToday(Prize $prize, string $today): int

@@ -15,6 +15,7 @@ services:
     environment:
       APP_ENV: local
       APP_DEBUG: "true"
+      XDEBUG_MODE: coverage
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: 3306
