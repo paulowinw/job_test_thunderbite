@@ -2,12 +2,13 @@
 
 namespace App\Services;
 
+use App\Contracts\PrizePicker;
 use App\Models\Game;
 use App\Models\Prize;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
-class WeightedPrizePicker
+class WeightedPrizePicker implements PrizePicker
 {
     /**
      * Eligible prizes for a weighted draw for this game.

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\PrizePicker;
+use App\Services\WeightedPrizePicker;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -13,7 +15,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-        //
+        $this->app->bind(PrizePicker::class, WeightedPrizePicker::class);
     }
 
     public function boot(): void

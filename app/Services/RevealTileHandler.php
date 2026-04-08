@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Contracts\PrizePicker;
 use App\Exceptions\GameValidationException;
 use App\Models\Game;
 use App\Models\GameRevealedTile;
@@ -13,7 +14,7 @@ class RevealTileHandler
     private const FALLBACK_TILE_IMAGE = '/assets/1.png';
 
     public function __construct(
-        private readonly WeightedPrizePicker $picker,
+        private readonly PrizePicker $picker,
     ) {}
 
     /**
