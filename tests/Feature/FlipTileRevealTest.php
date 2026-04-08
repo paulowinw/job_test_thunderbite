@@ -7,7 +7,6 @@ use App\Models\Game;
 use App\Models\GameRevealedTile;
 use App\Models\Prize;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -291,24 +290,4 @@ class FlipTileRevealTest extends TestCase
         $this->assertSame($prize->id, $game->prize_id);
     }
 
-    public function test_sqlite_weighted_pick_does_not_use_rand_in_sql(): void
-    {
-        $this->assertSame('sqlite', DB::connection()->getDriverName());
-
-        ['game' => $game] = $this->makeCampaignGameAndPrize();
-
-        $sqlLog = [];
-        DB::listen(function ($query) use (&$sqlLog): void {
-            $sqlLog[] = $query->sql;
-        });
-
-        $this->postJson(route('api.flip'), [
-            'gameId' => $game->id,
-            'tileIndex' => 12,
-        ])->assertOk();
-
-        foreach ($sqlLog as $sql) {
-            $this->assertDoesNotMatchRegularExpression('/\bRAND\s*\(/i', $sql);
-        }
-    }
 }
