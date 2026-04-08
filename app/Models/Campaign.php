@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use DateTimeZone;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Sluggable\HasSlug;
@@ -41,7 +42,7 @@ class Campaign extends Model
         return $this->hasMany(Game::class);
     }
 
-    public static function search($query)
+    public static function search(?string $query = null): Builder
     {
         return empty($query) ? static::query()
             : static::where('name', 'like', '%'.$query.'%')

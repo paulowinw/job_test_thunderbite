@@ -31,7 +31,7 @@ class Prize extends Model
         ];
     }
 
-    public static function search($query)
+    public static function search(?string $query = null): Builder
     {
         return empty($query) ? static::query()
             : static::where('name', 'like', '%'.$query.'%');
