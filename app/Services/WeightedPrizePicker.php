@@ -40,7 +40,7 @@ class WeightedPrizePicker implements PrizePicker
 
         if (in_array($driver, ['mysql', 'mariadb'], true)) {
             return $query->clone()
-                ->orderByRaw('-LOG(RAND()) / weight DESC')
+                ->orderByRaw('-LOG(RAND()) / weight ASC')
                 ->limit(1)
                 ->first();
         }
@@ -69,7 +69,7 @@ class WeightedPrizePicker implements PrizePicker
             $u = (random_int(0, PHP_INT_MAX - 1) + 1) / PHP_INT_MAX;
             $key = -log($u) / $weight;
 
-            if ($bestKey === null || $key > $bestKey) {
+            if ($bestKey === null || $key < $bestKey) {
                 $bestKey = $key;
                 $chosen = $prize;
             }

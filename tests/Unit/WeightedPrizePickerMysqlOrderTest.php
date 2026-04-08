@@ -12,9 +12,9 @@ use Tests\TestCase;
 class WeightedPrizePickerMysqlOrderTest extends TestCase
 {
     /**
-     * MySQL/MariaDB use ORDER BY -LOG(RAND()) / weight DESC (Gumbel-max trick); this guards the exact expression used in {@see WeightedPrizePicker::pickFromQuery()}.
+     * MySQL/MariaDB use ORDER BY -LOG(RAND()) / weight ASC (exponential race: min of Exp(weight)); this guards the exact expression used in {@see WeightedPrizePicker::pickFromQuery()}.
      */
-    public function test_mysql_driver_applies_log_rand_over_weight_desc_order(): void
+    public function test_mysql_driver_applies_log_rand_over_weight_asc_order(): void
     {
         $fakePrize = new Prize(['id' => 1]);
 
@@ -24,7 +24,7 @@ class WeightedPrizePickerMysqlOrderTest extends TestCase
         $cloneForPick = Mockery::mock(Builder::class);
         $cloneForPick->shouldReceive('orderByRaw')
             ->once()
-            ->with('-LOG(RAND()) / weight DESC')
+            ->with('-LOG(RAND()) / weight ASC')
             ->andReturnSelf();
         $cloneForPick->shouldReceive('limit')->once()->with(1)->andReturnSelf();
         $cloneForPick->shouldReceive('first')->once()->andReturn($fakePrize);

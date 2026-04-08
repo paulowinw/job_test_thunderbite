@@ -14,7 +14,7 @@ class WeightedPrizePickerDistributionTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * The PHP fallback uses the same Gumbel-max rule as -LOG(RAND())/weight DESC on MySQL; empirical share for weight 1 vs 3 should cluster near 25%.
+     * The PHP fallback matches -LOG(RAND())/weight ASC on MySQL (min of independent Exp(weight)); empirical share for weight 1 vs 3 should cluster near 25%.
      */
     public function test_gumbel_max_selection_matches_relative_weights(): void
     {
